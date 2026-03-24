@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Siwa.Core/Siwa.Core.csproj" />
+  <Project Path="Siwa.Example/Siwa.Example.csproj" />
+  <Project Path="Siwa/Siwa.csproj" />
+</Solution>
