@@ -1,6 +1,8 @@
 using System.Numerics;
+using System.Text.Json;
 using Arch.Core;
 using Arch.Core.Extensions;
+using Arch.Persistence;
 using Arch.System;
 using ImGuiNET;
 using Silk.NET.Assimp;
@@ -9,9 +11,11 @@ using Silk.NET.Windowing;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL.Extensions.ImGui;
+using Siwa.Core.Components;
 using Siwa.Core.Helper;
 using Siwa.Core.Systems;
 using Camera = Siwa.Core.Components.Camera;
+using File = System.IO.File;
 using Light = Siwa.Core.Helper.Light;
 using Shader = Siwa.Core.Helper.Shader;
 
@@ -33,14 +37,15 @@ namespace Siwa.Core
 
         private Shader _shader;
         private Shader _lightShader;
-        private ObjModel _renderable = null!;
+        // private ObjModel _renderable = null!;
         private Light _light;
         private Entity _camera;
 
         private CameraSystem _cameraSystem;
+        private RenderSystem _renderSystem;
         private BaseSystem<World, float>[] _systems = [];
 
-        
+        private float a = 3.0f, b = 0.7f;
 
         public Game()
         {
@@ -72,7 +77,12 @@ namespace Siwa.Core
             _window.Run();
         }
 
-        private void OnStart() {}
+        private void OnStart()
+        {
+            var modelHandle = AssetLoader.Instance.GetAssetHandle<ModelAsset>("2b3802e4-9d51-476b-99f4-d66e2ed9871a");
+            var tableEntity = _world.Create(new Model { ModelHandle = modelHandle }, new Transform() { Position = new Vector3() });
+            var secondTableEntity = _world.Create(new Model { ModelHandle = modelHandle }, new Transform() { Position = new Vector3() });
+        }
         
         private void OnRender(double dt)
         {
@@ -87,9 +97,13 @@ namespace Siwa.Core
             ref var cameraComponent = ref _camera.TryGetRef<Camera>(out bool exists);
             if(exists)
                 _gl.Uniform3(_gl.GetUniformLocation(_shader.ShaderProgram, "camPos"), cameraComponent.Position);
+            _gl.Uniform1(_gl.GetUniformLocation(_shader.ShaderProgram, "a"), a);
+            _gl.Uniform1(_gl.GetUniformLocation(_shader.ShaderProgram, "b"), b);
+            
             _cameraSystem.MatrixQuery(_world, _shader);
             _light.SupplyColorUniforms(_gl, _shader);
-            _renderable.OnRender(_gl, _shader);
+            _renderSystem.Render((float)dt);
+            // _renderable.OnRender(_gl, _shader);
             
             _lightShader.Activate(_gl);
             _cameraSystem.MatrixQuery(_world, _lightShader);
@@ -116,23 +130,36 @@ namespace Siwa.Core
             ImGui.InputFloat("Sensitivity", ref camera.Sensitivity);
             ImGui.End();
             
+            _renderSystem.RenderImGui();
+            
             ImGui.Begin("Light");
             ImGui.InputFloat3("Position", ref _light.Position);
             ImGui.ColorEdit4("Color", ref _light.Color);
+            ImGui.DragFloat("A", ref a, 0.01f);
+            ImGui.DragFloat("B", ref b, 0.01f);
             ImGui.End();
             
-            ImGui.Begin("Obj");
-            for(int i = 0; i < _renderable.Meshes.Count; i++)
-            {
-                ImGui.InputFloat3(i + " Mesh Position", ref _renderable.Meshes[i].Position);
-            }
-            ImGui.End();
+            // ImGui.Begin("Obj");
+            // for(int i = 0; i < _renderable.Meshes.Count; i++)
+            // {
+            //     ImGui.InputFloat3(i + " Mesh Position", ref _renderable.Meshes[i].Position);
+            // }
+            // ImGui.End();
 
+            
+            ImGui.Begin("World");
+            if(ImGui.Button("Load"))
+                LoadWorld();
+            if(ImGui.Button("Save"))
+                SaveWorld();
+            ImGui.End();
+            
             
             // 4. Create the FPS Debug Window
             ImGui.Begin("Debug Metrics");
             ImGui.Text($"FPS: {_fps:F1}"); // F1 for 1 decimal place
             ImGui.Text($"Frame Time: {delta * 1000:F2} ms");
+            
     
             // Inside your Update or Render loop
             _historyUpdateTimer += delta;
@@ -175,49 +202,67 @@ namespace Siwa.Core
             // _gl.Disable(EnableCap.CullFace);
             
             _assimp = Assimp.GetApi();
+            AssetLoader.Initialize(_gl, _assimp);
             
             _shader = new Shader(_gl, "Shaders/shader.frag", "Shaders/shader.vert");
             _shader.Activate(_gl);
-            _renderable = new ObjModel(_assimp, "Assets/SpecularTest/SpecularTest.obj");
-            // _renderable = new ObjModel(_assimp, "Assets/objs/uploads_files_6722647_KARPENTER+GRASSHOPPER+SET1.obj");
-            // _renderable = new Quad(_shader);
-            _renderable.OnLoad(_gl);
             
             _lightShader = new Shader(_gl, "Shaders/light.frag", "Shaders/light.vert");
             _lightShader.Activate(_gl);
             _light = new Light();
             _light.OnLoad(_gl);
-            
 
             if (_gl is null) throw new Exception("Failed to initialize OpenGL context.");
 
             _inputContext = _window.CreateInput();
             _imGuiController = new ImGuiController(_gl, _window, _inputContext);
 
-            CreateWorld();
+            AssetLoader.Instance.LoadAssetFiles();
+            
+            
+            LoadWorld();
+            
 
             foreach (var system in _systems)
                 system.Initialize();
             
+            
             OnStart();
         }
 
-        private void CreateWorld()
+        private const string DefaultWorld = "Assets/default.world";
+        private void LoadWorld()
         {
-            _world = World.Create();
-            // _systems =
-            // [
-            // ];
+            if(_world is not null) _world.Dispose();
+            
+            if (File.Exists(DefaultWorld))
+            {
+                var serializer = new ArchJsonSerializer();
+                _world = serializer.Deserialize(File.ReadAllBytes(DefaultWorld));
+            }
+            else
+            {
+                _world = World.Create();   
+            }
             
             _cameraSystem = new CameraSystem(_gl, _world, _inputContext);
+            _renderSystem = new RenderSystem(_world, _gl, _shader);
+            _renderSystem.Initialize();
+            
             
             var camera = Ecs.CreateCamera(_window.Size.X, _window.Size.Y, new Vector3(0, 0, 3f));
             _camera = _world.Create(camera);
         }
+
+        private void SaveWorld()
+        {
+            var serializer = new ArchJsonSerializer();
+            var buffer = serializer.Serialize(_world);
+            File.WriteAllBytes(DefaultWorld, buffer);
+        }
         
         public void Dispose()
         {
-            _renderable.Dispose(_gl);
             _shader.Delete(_gl);
             _imGuiController.Dispose();
             _inputContext.Dispose();

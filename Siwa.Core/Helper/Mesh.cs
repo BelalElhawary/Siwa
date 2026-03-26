@@ -1,8 +1,8 @@
 using System.Numerics;
 using Silk.NET.OpenGL;
+using Siwa.Core.Assets;
 using Siwa.Core.Components;
 using AssimpMesh = Silk.NET.Assimp.Mesh;
-using Texture = Siwa.Core.Components.Texture;
 
 namespace Siwa.Core.Helper;
 
@@ -11,7 +11,7 @@ public unsafe class Mesh : IRenderable
     private Vao _vao;
     private Vbo _vbo;
     private Ebo _ebo;
-    public Material? Material;
+    public Handle<MaterialAsset> Material;
     public readonly uint MaterialIndex;
     // private Texture _texture;
     // private Texture _specularTexture;
@@ -88,12 +88,14 @@ public unsafe class Mesh : IRenderable
         gl.BindBuffer(BufferTargetARB.ElementArrayBuffer, 0);
     }
 
+    private readonly AssetPool<MaterialAsset> _materialRegistry = AssetPool<MaterialAsset>.Registry;
     public void OnRender(GL gl, Shader shader)
     {
-        if (Material.HasValue)
+        var material = _materialRegistry.Get(Material);
+        if (material != null)
         {
-            gl.BindTexture(Material.Value.Albedo);
-            gl.BindTexture(Material.Value.Specular);
+            gl.BindTexture(material.Albedo);
+            gl.BindTexture(material.Specular);
         }
         gl.BindVertexArray(_vao.Id);
         gl.DrawElements(PrimitiveType.Triangles, (uint)_indices.Length, DrawElementsType.UnsignedInt, (void*)0);
@@ -104,10 +106,5 @@ public unsafe class Mesh : IRenderable
         gl.DeleteVertexArray(_vao.Id);
         gl.DeleteBuffer(_vbo.Id);
         gl.DeleteBuffer(_ebo.Id);
-        if (Material.HasValue)
-        {
-            gl.DeleteTexture(Material.Value.Albedo.Id);
-            gl.DeleteTexture(Material.Value.Specular.Id);
-        }
     }
 }
