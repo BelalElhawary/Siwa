@@ -1,8 +1,6 @@
+using System.Drawing;
 using System.Numerics;
 using System.Runtime.InteropServices;
-using Arch.Core;
-using Silk.NET.Maths;
-using Silk.NET.OpenGL;
 using Siwa.Core.Components;
 
 namespace Siwa.Core.Helper;
@@ -13,22 +11,9 @@ public static class Extensions
     {
         return MemoryMarshal.CreateReadOnlySpan(ref matrix.M11, 16);
     }
-}
 
-public static class Ecs
-{
-    public static Camera CreateCamera(int width, int height, Vector3 position)
+    public static Vector4 ToVector4(this Color color)
     {
-        return new Camera
-        {
-            Position = position,
-            Width = width,
-            Height = height,
-            Orientation = new(0, 0, -1f),
-            Up = new(0, 1f, 0f),
-            Matrix = Matrix4x4.Identity,
-            Speed = 5f,
-            Sensitivity = 2500f
-        };
+        return new Vector4(color.R / 255f, color.G / 255f, color.B / 255f, color.A / 255f);
     }
 }

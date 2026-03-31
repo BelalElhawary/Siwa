@@ -4,6 +4,6 @@ namespace Siwa.Core.Components;
 
 public struct Texture
 {
-    public uint Id;
+    public uint Handle;
     public TextureUnit Slot;
 }
