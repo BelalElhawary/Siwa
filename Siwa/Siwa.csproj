@@ -11,4 +11,8 @@
     <ProjectReference Include="..\Siwa.Core\Siwa.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Silk.NET" Version="2.23.0" />
+  </ItemGroup>
+
 </Project>
