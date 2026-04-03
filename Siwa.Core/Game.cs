@@ -143,6 +143,7 @@ namespace Siwa.Core
             _renderCollection.Add(1, new RenderSystem(_world, gl, _renderer));
             
             
+            var cameraTag = new Tag() { Name = "MainCamera" };
             var camera = new Camera
             {
                 Width = _window.Size.X,
@@ -153,9 +154,9 @@ namespace Siwa.Core
             var transform = new Transform { Position = new Vector3(0, 0, 3f) };
             var cameraMovement = new CameraMovement { Speed = 5f, Sensitivity = 2500f };
             
-            _world.Create(camera, transform, cameraMovement);
+            _world.Create(camera, transform, cameraMovement, cameraTag);
             _world.Create(new Renderable { Model = Handle<Model>.FromLong(4294967296) },
-                new Transform { Position = new Vector3() });
+                new Transform { Position = new Vector3() }, new Tag { Name = "Table" });
         }
         
         public void Dispose()

@@ -128,16 +128,17 @@ public class ImGuiSystem(World world, ViewPort viewPort)
             ImGui.EndMenuBar();
         }
     }
-    
+
+    private readonly QueryDescription _queryHierarchy = new QueryDescription().WithAll<Tag>();
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void Hierarchy()
     {
         ImGui.Begin("Hierarchy");
         if (ImGui.TreeNode("Root"))
         {
-            world.Query(QueryDescription.Null, entity =>
+            world.Query(_queryHierarchy, (Entity entity, ref Tag tag) =>
             {
-                ImGui.TreeNodeEx("Entity " + entity.Id, ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.SpanAvailWidth);
+                ImGui.TreeNodeEx(tag.Name, ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.SpanAvailWidth);
                 if (ImGui.IsItemClicked())
                 {
                     _selected = entity;
@@ -196,6 +197,8 @@ public class ImGuiSystem(World world, ViewPort viewPort)
         var components = _selected.Value.GetAllComponents();
         ImGui.Begin("Inspector");
         ImGui.Text("Entity ID: " + _selected.Value.Id);
+        ref var tag = ref _selected.Value.TryGetRef<Tag>(out var exists);
+        if(exists) ImGui.InputText(nameof(Tag.Name), ref tag.Name, 255);
         for (int i = 0; i < components.Length; i++)
         {
             if(components[i] is null) continue;
