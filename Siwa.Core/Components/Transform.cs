@@ -2,7 +2,9 @@ using System.Numerics;
 
 namespace Siwa.Core.Components;
 
-public struct Transform
+public struct Transform()
 {
-    public Vector3 Position;
+    public Vector3 Position = Vector3.Zero;
+    public Quaternion Rotation = Quaternion.Identity;
+    public Vector3 Scale = Vector3.One;
 }

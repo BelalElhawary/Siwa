@@ -206,6 +206,19 @@ public class ImGuiSystem(World world, ViewPort viewPort)
                     {
                         ref Transform reference = ref _selected.Value.Get<Transform>();
                         ImGui.InputFloat3(nameof(Transform.Position), ref reference.Position);
+                        Vector3 eulerDegrees = reference.Rotation.ToEuler();
+                        // 2. Use InputFloat3 for a better user experience
+                        if (ImGui.InputFloat3("Rotation", ref eulerDegrees))
+                        {
+                            // 3. Convert Degrees back to Radians
+                            float radX = eulerDegrees.X * ((float)Math.PI / 180f);
+                            float radY = eulerDegrees.Y * ((float)Math.PI / 180f);
+                            float radZ = eulerDegrees.Z * ((float)Math.PI / 180f);
+
+                            // 4. Create the new Quaternion (Order: Yaw, Pitch, Roll)
+                            reference.Rotation = Quaternion.CreateFromYawPitchRoll(radY, radX, radZ);
+                        }
+                        ImGui.InputFloat3(nameof(Transform.Scale), ref reference.Scale);
                     } 
                     break;
                 case Camera:
