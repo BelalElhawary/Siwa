@@ -2,14 +2,12 @@
 using Siwa;
 using Siwa.Core;
 using Siwa.Core.Assets;
+using Siwa.Core.Serialization;
 
-var options = new JsonSerializerOptions();
-options.Converters.Add(new Vector4Converter());
-options.Converters.Add(new Vector3Converter());
-options.Converters.Add(new MaterialHandleConverter());
+SerializationManager.Initialize();
 
-var unlitAssets = new UnlitAssets(options);
-var litAssets = new LitAssets(options);
-var engineAssets = new EngineAssets(options);
+var unlitAssets = new UnlitAssets(SerializationManager.Options);
+var litAssets = new LitAssets(SerializationManager.Options);
+var engineAssets = new EngineAssets(SerializationManager.Options);
 Game game = new Game();
 game.Run();

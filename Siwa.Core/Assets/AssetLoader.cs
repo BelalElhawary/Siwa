@@ -1,11 +1,11 @@
-using System.Numerics;
 using System.Text.Json;
-using System.Text.Json.Serialization;
+using Arch.Core;
 using Silk.NET.Assimp;
 using Silk.NET.OpenGL;
 using Siwa.Core.Assets.Kinds;
 using Siwa.Core.Data;
 using Siwa.Core.Helper;
+using Siwa.Core.Serialization;
 using File = System.IO.File;
 
 namespace Siwa.Core.Assets;
@@ -22,17 +22,11 @@ public static class AssetTypes
 
 public sealed class AssetLoader
 {
-    private readonly JsonSerializerOptions _options;
-    
     private AssetLoader(GL gl, Assimp assimp, string rootProject)
     {
         Gl = gl;
         Assimp = assimp;
         _rootProject = rootProject;
-        _options = new JsonSerializerOptions();
-        _options.Converters.Add(new Vector4Converter());
-        _options.Converters.Add(new Vector3Converter());
-        _options.Converters.Add(new MaterialHandleConverter());
     }
     
     public static AssetLoader Instance = null!;
@@ -90,6 +84,19 @@ public sealed class AssetLoader
         }
     }
 
+    public void SaveWorld(string worldName, World world)
+    {
+        var json = JsonSerializer.Serialize(world, SerializationManager.Options);
+        File.WriteAllText(Path.Combine(AssetsFolder, worldName + ".world"), json);
+    }
+    
+    public World LoadWorld(string worldName)
+    {
+        var json = File.ReadAllText(Path.Combine(AssetsFolder, worldName + ".world"));
+        var world = JsonSerializer.Deserialize<World>(json, SerializationManager.Options);
+        return world ?? throw new ArgumentNullException(nameof(world));
+    }
+
     private Asset ResolveAssetFile(FileInfo file)
     {
         switch (file.Extension)
@@ -111,7 +118,7 @@ public sealed class AssetLoader
 
     private T LoadAssetFile<T>(FileInfo file) where T : Asset
     {
-        var deserialized = JsonSerializer.Deserialize<T>(File.ReadAllText(file.FullName), _options);
+        var deserialized = JsonSerializer.Deserialize<T>(File.ReadAllText(file.FullName), SerializationManager.Options);
         if (deserialized is not null)
         {
             deserialized.FilePath = file.FullName;
@@ -119,78 +126,5 @@ public sealed class AssetLoader
             return deserialized;
         }
         throw new Exception($"Failed to deserialize the file {file.Name} at location {file.DirectoryName}.");
-    }
-}
-
-public class Vector4Converter : JsonConverter<Vector4>
-{
-    public override Vector4 Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-    {
-        // Simple logic: read as an object with X, Y, Z, W properties
-        using var doc = JsonDocument.ParseValue(ref reader);
-        var root = doc.RootElement;
-        return new Vector4(
-            root.GetProperty("X").GetSingle(),
-            root.GetProperty("Y").GetSingle(),
-            root.GetProperty("Z").GetSingle(),
-            root.GetProperty("W").GetSingle()
-        );
-    }
-
-    public override void Write(Utf8JsonWriter writer, Vector4 value, JsonSerializerOptions options)
-    {
-        writer.WriteStartObject();
-        writer.WriteNumber("X", value.X);
-        writer.WriteNumber("Y", value.Y);
-        writer.WriteNumber("Z", value.Z);
-        writer.WriteNumber("W", value.W);
-        writer.WriteEndObject();
-    }
-}
-
-public class Vector3Converter : JsonConverter<Vector3>
-{
-    public override Vector3 Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-    {
-        // Simple logic: read as an object with X, Y, Z, W properties
-        using var doc = JsonDocument.ParseValue(ref reader);
-        var root = doc.RootElement;
-        return new Vector3(
-            root.GetProperty("X").GetSingle(),
-            root.GetProperty("Y").GetSingle(),
-            root.GetProperty("Z").GetSingle()
-        );
-    }
-
-    public override void Write(Utf8JsonWriter writer, Vector3 value, JsonSerializerOptions options)
-    {
-        writer.WriteStartObject();
-        writer.WriteNumber("X", value.X);
-        writer.WriteNumber("Y", value.Y);
-        writer.WriteNumber("Z", value.Z);
-        writer.WriteEndObject();
-    }
-}
-
-public class MaterialHandleConverter : JsonConverter<MaterialHandle>
-{
-    public override MaterialHandle Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-    {
-        // Simple logic: read as an object with X, Y, Z, W properties
-        using var doc = JsonDocument.ParseValue(ref reader);
-        var root = doc.RootElement;
-        return new MaterialHandle
-        {
-            Handle = RawHandle.FromLong(root.GetProperty("Handle").GetInt64()),
-            Type = (MaterialType)root.GetProperty("Type").GetByte()
-        };
-    }
-
-    public override void Write(Utf8JsonWriter writer, MaterialHandle value, JsonSerializerOptions options)
-    {
-        writer.WriteStartObject();
-        writer.WriteNumber("Handle", RawHandle.ToLong(value.Handle));
-        writer.WriteNumber("Type", (byte)value.Type);
-        writer.WriteEndObject();
     }
 }
