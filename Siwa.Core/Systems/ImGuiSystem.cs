@@ -112,10 +112,12 @@ public class ImGuiSystem(World world, ViewPort viewPort)
             {
                 if (ImGui.MenuItem("Save World"))
                 {
+                    AssetLoader.Instance.SaveWorld("default", world);
                 }
 
                 if (ImGui.MenuItem("Exit"))
                 {
+                    Environment.Exit(0);
                 }
 
                 ImGui.EndMenu();

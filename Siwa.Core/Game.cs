@@ -1,6 +1,5 @@
 using System.Numerics;
 using Arch.Core;
-using Arch.Persistence;
 using ImGuiNET;
 using Silk.NET.Assimp;
 using Silk.NET.OpenGL;
@@ -12,8 +11,8 @@ using Siwa.Core.Assets;
 using Siwa.Core.Assets.Kinds;
 using Siwa.Core.Components;
 using Siwa.Core.Data;
-using Siwa.Core.Helper;
 using Siwa.Core.Rendering;
+using Siwa.Core.Serialization;
 using Siwa.Core.Systems;
 using Camera = Siwa.Core.Components.Camera;
 
@@ -104,6 +103,8 @@ namespace Siwa.Core
             _renderer = new ForwardRenderer();
             _renderer.AddExtension(new MaterialProcessor(_renderer.RenderPipeline));
             
+            SerializationManager.Initialize();
+            
             AssetLoader.Initialize(_gl, _assimp, "D:\\SiwaProject");
             AssetLoader.Instance.LoadAssetFiles();
             
@@ -135,28 +136,12 @@ namespace Siwa.Core
         {
             if (_world is not null) _world.Dispose();
             
-            _world = World.Create();
+            _world = AssetLoader.Instance.LoadWorld("default");
             
             _guiSystem = new ImGuiSystem(_world, _viewPort);
 
             _renderCollection.Add(0, new CameraSystem(gl, _world, _inputContext, _viewPort));
             _renderCollection.Add(1, new RenderSystem(_world, gl, _renderer));
-            
-            
-            var cameraTag = new Tag() { Name = "MainCamera" };
-            var camera = new Camera
-            {
-                Width = _window.Size.X,
-                Height = _window.Size.Y,
-                Orientation = new Vector3(0, 0, -1f),
-                Up = new Vector3(0, 1f, 0f)
-            };
-            var transform = new Transform { Position = new Vector3(0, 0, 3f) };
-            var cameraMovement = new CameraMovement { Speed = 5f, Sensitivity = 2500f };
-            
-            _world.Create(camera, transform, cameraMovement, cameraTag);
-            _world.Create(new Renderable { Model = Handle<Model>.FromLong(4294967296) },
-                new Transform { Position = new Vector3() }, new Tag { Name = "Table" });
         }
         
         public void Dispose()
