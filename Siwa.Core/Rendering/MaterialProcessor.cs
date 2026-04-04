@@ -24,12 +24,15 @@ public class MaterialProcessor(RenderPipeline pipeline) : IRendererExtension
         ref var shader = ref _shaders.Get(mat.Shader);
         var color = mat.Color;
         var shaderHandle = shader.Handle;
+        var translationMatrix = Matrix4x4.CreateScale(transform.Scale) * 
+                                Matrix4x4.CreateFromQuaternion(transform.Rotation) * 
+                                Matrix4x4.CreateTranslation(transform.Position);
         pipeline.Submit(new RenderCommand
         {
             ShaderHandle = shaderHandle,
             VaoHandle = mesh.Vao.Handle,
             IndexCount = mesh.IndicesCount,
-            WorldMatrix = Matrix4x4.CreateTranslation(transform.Position),
+            WorldMatrix = translationMatrix,
             BindMaterialUniforms = gl => {
                 gl.Uniform4(gl.GetUniformLocation(shaderHandle, "uColor"), color);
                 gl.Uniform3(gl.GetUniformLocation(shaderHandle, "uLightPosition"), new Vector3());
@@ -51,12 +54,15 @@ public class MaterialProcessor(RenderPipeline pipeline) : IRendererExtension
         var specularHandle = specular.Handle;
         var lightRange = mat.LightRange;
         var lightFalloff = mat.LightFalloff;
+        var translationMatrix = Matrix4x4.CreateScale(transform.Scale) * 
+                                Matrix4x4.CreateFromQuaternion(transform.Rotation) * 
+                                Matrix4x4.CreateTranslation(transform.Position);
         pipeline.Submit(new RenderCommand
         {
             ShaderHandle = shaderHandle,
             VaoHandle = mesh.Vao.Handle,
             IndexCount = mesh.IndicesCount,
-            WorldMatrix = Matrix4x4.CreateTranslation(transform.Position),
+            WorldMatrix = translationMatrix,
             BindMaterialUniforms = gl => {
                 gl.ActiveTexture(TextureUnit.Texture0);
                 gl.BindTexture(TextureTarget.Texture2D,  albedoHandle);
@@ -72,10 +78,6 @@ public class MaterialProcessor(RenderPipeline pipeline) : IRendererExtension
     
     public void CollectCommands(World world)
     {
-        // 1. Get the specific pool for this material
-        
-        
-        // 2. Query entities that use this specific handle type
         world.Query(_query, (Entity entity, ref Renderable renderable, ref Transform transform) =>
         {
             var model = AssetPool<Model>.Registry.Get(renderable.Model);
@@ -94,8 +96,6 @@ public class MaterialProcessor(RenderPipeline pipeline) : IRendererExtension
                         LitMaterial(mesh, transform);
                         break;
                     }
-                    default:
-                        throw new ArgumentOutOfRangeException();
                 }
             }
         });

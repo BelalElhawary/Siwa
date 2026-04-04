@@ -142,21 +142,6 @@ namespace Siwa.Core
 
             _renderCollection.Add(0, new CameraSystem(gl, _world, _inputContext, _viewPort));
             _renderCollection.Add(1, new RenderSystem(_world, gl, _renderer));
-            
-            
-            // var camera = new Camera
-            // {
-            //     Width = _window.Size.X,
-            //     Height = _window.Size.Y,
-            //     Orientation = new Vector3(0, 0, -1f),
-            //     Up = new Vector3(0, 1f, 0f)
-            // };
-            // var transform = new Transform { Position = new Vector3(0, 0, 3f) };
-            // var cameraMovement = new CameraMovement { Speed = 5f, Sensitivity = 2500f };
-            //
-            // _world.Create(camera, transform, cameraMovement);
-            // _world.Create(new Renderable { Model = Handle<Model>.FromLong(4294967296) },
-            //     new Transform { Position = new Vector3() });
         }
         
         public void Dispose()

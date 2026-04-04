@@ -130,16 +130,17 @@ public class ImGuiSystem(World world, ViewPort viewPort)
             ImGui.EndMenuBar();
         }
     }
-    
+
+    private readonly QueryDescription _queryHierarchy = new QueryDescription().WithAll<Tag>();
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void Hierarchy()
     {
         ImGui.Begin("Hierarchy");
         if (ImGui.TreeNode("Root"))
         {
-            world.Query(QueryDescription.Null, entity =>
+            world.Query(_queryHierarchy, (Entity entity, ref Tag tag) =>
             {
-                ImGui.TreeNodeEx("Entity " + entity.Id, ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.SpanAvailWidth);
+                ImGui.TreeNodeEx(tag.Name, ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.SpanAvailWidth);
                 if (ImGui.IsItemClicked())
                 {
                     _selected = entity;
@@ -198,6 +199,8 @@ public class ImGuiSystem(World world, ViewPort viewPort)
         var components = _selected.Value.GetAllComponents();
         ImGui.Begin("Inspector");
         ImGui.Text("Entity ID: " + _selected.Value.Id);
+        ref var tag = ref _selected.Value.TryGetRef<Tag>(out var exists);
+        if(exists) ImGui.InputText(nameof(Tag.Name), ref tag.Name, 255);
         for (int i = 0; i < components.Length; i++)
         {
             if(components[i] is null) continue;
@@ -208,6 +211,19 @@ public class ImGuiSystem(World world, ViewPort viewPort)
                     {
                         ref Transform reference = ref _selected.Value.Get<Transform>();
                         ImGui.InputFloat3(nameof(Transform.Position), ref reference.Position);
+                        Vector3 eulerDegrees = reference.Rotation.ToEuler();
+                        // 2. Use InputFloat3 for a better user experience
+                        if (ImGui.InputFloat3("Rotation", ref eulerDegrees))
+                        {
+                            // 3. Convert Degrees back to Radians
+                            float radX = eulerDegrees.X * ((float)Math.PI / 180f);
+                            float radY = eulerDegrees.Y * ((float)Math.PI / 180f);
+                            float radZ = eulerDegrees.Z * ((float)Math.PI / 180f);
+
+                            // 4. Create the new Quaternion (Order: Yaw, Pitch, Roll)
+                            reference.Rotation = Quaternion.CreateFromYawPitchRoll(radY, radX, radZ);
+                        }
+                        ImGui.InputFloat3(nameof(Transform.Scale), ref reference.Scale);
                     } 
                     break;
                 case Camera:
