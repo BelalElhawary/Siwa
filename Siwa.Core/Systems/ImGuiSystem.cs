@@ -152,11 +152,13 @@ public class ImGuiSystem(World world, ViewPort viewPort)
         }
         ImGui.End();
     }
-    
+
+    private bool _includeReadonly = false;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void Assets()
     {
         ImGui.Begin("Assets");
+        ImGui.Checkbox("Show Engine Assets", ref _includeReadonly);
 
         // 1. Calculate Grid Math
         float thumbnailSize = 64.0f;
@@ -170,7 +172,7 @@ public class ImGuiSystem(World world, ViewPort viewPort)
         // 2. Draw the Grid
         if (ImGui.BeginTable("AssetBrowserGrid", columnCount))
         {
-            foreach (var asset in _assets)
+            foreach (var asset in _assets.Where(a => _includeReadonly || !a.Readonly))
             {
                 ImGui.TableNextColumn();
                 ImGui.PushID(HashCode.Combine(asset.GetType(), asset.Handle)); // Ensure unique IDs per asset

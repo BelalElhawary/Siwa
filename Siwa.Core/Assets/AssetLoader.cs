@@ -1,12 +1,15 @@
+using System.Numerics;
 using System.Text.Json;
 using Arch.Core;
 using Silk.NET.Assimp;
 using Silk.NET.OpenGL;
 using Siwa.Core.Assets.Kinds;
 using Siwa.Core.Data;
-using Siwa.Core.Helper;
 using Siwa.Core.Serialization;
+using Siwa.Core.Testing;
 using File = System.IO.File;
+using Texture = Siwa.Core.Components.Texture;
+using Shader = Siwa.Core.Components.Shader;
 
 namespace Siwa.Core.Assets;
 
@@ -73,6 +76,8 @@ public sealed class AssetLoader
 
     private void ResolveAssetFiles(FileInfo[] files)
     {
+        LoadDefaultAssets();
+        SaveTestingAssets();
         foreach (var file in files)
         {
             var asset = ResolveAssetFile(file);
@@ -95,6 +100,109 @@ public sealed class AssetLoader
         var json = File.ReadAllText(Path.Combine(AssetsFolder, worldName + ".world"));
         var world = JsonSerializer.Deserialize<World>(json, SerializationManager.Options);
         return world ?? throw new ArgumentNullException(nameof(world));
+    }
+
+    private void SaveTestingAssets()
+    {
+        var unlitAssets = new UnlitAssets(SerializationManager.Options);
+        var litAssets = new LitAssets(SerializationManager.Options);
+    }
+
+    private void LoadDefaultAssets()
+    {
+        var unlitShaderAsset = new ShaderAsset
+        {
+            Readonly = true,
+            Name = "UnlitShader",
+            FilePath = "Engine/Shaders/UnlitShader",
+            FragmentShaderPath = "D:\\SiwaProject\\Shaders\\unlit.frag",
+            VertexShaderPath = "D:\\SiwaProject\\Shaders\\unlit.vert",
+            Handle = AssetPool<Shader>.Registry.Reserve().ToRaw()
+        };
+        var litShaderAsset = new ShaderAsset
+        {
+            Readonly = true,
+            Name = "LitShader",
+            FilePath = "Engine/Shaders/LitShader",
+            FragmentShaderPath = "D:\\SiwaProject\\Shaders\\shader.frag",
+            VertexShaderPath = "D:\\SiwaProject\\Shaders\\shader.vert",
+            Handle = AssetPool<Shader>.Registry.Reserve().ToRaw()
+        };
+        var nullTextureAsset = new TextureAsset
+        {
+            Readonly = true,
+            Handle = AssetPool<Texture>.Registry.Reserve().ToRaw(),
+            FilePath = "Engine/Textures/NullTexture",
+            Name = "NullTexture",
+            ImagePath = "D:\\SiwaProject\\Engine\\null_texture.png",
+            PixelFormat = PixelFormat.Rgba,
+            Slot = 0,
+        };
+        var modelIcon = new TextureAsset
+        {
+            Readonly = true,
+            Handle = AssetPool<Texture>.Registry.Reserve().ToRaw(),
+            ImagePath = "D:\\SiwaProject\\Engine\\deployed_code_50dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.png",
+            FilePath = "Engine/Textures/ModelIconTexture",
+            PixelFormat = PixelFormat.Rgba,
+            FlipVertically = false,
+            Slot = 0,
+            Name = "ModelIcon"
+        };
+        var textureIcon = new TextureAsset
+        {
+            Readonly = true,
+            Handle = AssetPool<Texture>.Registry.Reserve().ToRaw(),
+            ImagePath = "D:\\SiwaProject\\Engine\\texture_50dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.png",
+            FilePath = "Engine/Textures/TextureIconTexture",
+            PixelFormat = PixelFormat.Rgba,
+            FlipVertically = false,
+            Slot = 0,
+            Name = "TextureIcon"
+        };
+        var shaderIcon = new TextureAsset
+        {
+            Readonly = true,
+            Handle = AssetPool<Texture>.Registry.Reserve().ToRaw(),
+            ImagePath = "D:\\SiwaProject\\Engine\\docs_50dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.png",
+            FilePath = "Engine/Textures/ShaderIconTexture",
+            PixelFormat = PixelFormat.Rgba,
+            FlipVertically = false,
+            Slot = 0,
+            Name = "ShaderIcon"
+        };
+        var materialIcon = new TextureAsset
+        {
+            Readonly = true,
+            Handle = AssetPool<Texture>.Registry.Reserve().ToRaw(),
+            ImagePath = "D:\\SiwaProject\\Engine\\ev_shadow_50dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.png",
+            FilePath = "Engine/Textures/MaterialIconTexture",
+            PixelFormat = PixelFormat.Rgba,
+            FlipVertically = false,
+            Slot = 0,
+            Name = "MaterialIcon"
+        };
+        var nullLitMaterialAsset = new LitMaterialAsset
+        {
+            Readonly = true,
+            Handle = AssetPool<LitMaterial>.Registry.Reserve().ToRaw(),
+            FilePath = "Engine/Textures/NullLitMaterial",
+            Name = "NullLitMaterial",
+            AlbedoTexture = nullTextureAsset.Handle.ToHandle<Texture>(),
+            Shader = litShaderAsset.Handle.ToHandle<Shader>(),
+            Color = new Vector4(1,1,1,1)
+        };
+        var nullUnlitMaterialAsset = new UnlitMaterialAsset
+        {
+            Readonly = true,
+            Handle = AssetPool<UnlitMaterial>.Registry.Reserve().ToRaw(),
+            FilePath = "Engine/Materials/NullUnlitMaterial",
+            Name = "NullUnlitMaterial",
+            LightColor = new Vector4(1, 0, 1, 1),
+            Shader =  unlitShaderAsset.Handle.ToHandle<Shader>()
+        };
+        
+        _assets.AddRange(unlitShaderAsset, litShaderAsset, nullUnlitMaterialAsset, nullLitMaterialAsset, nullTextureAsset, modelIcon, textureIcon, shaderIcon, materialIcon);
     }
 
     private Asset ResolveAssetFile(FileInfo file)

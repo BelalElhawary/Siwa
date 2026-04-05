@@ -5,41 +5,34 @@ using Siwa.Core.Assets.Kinds;
 using Siwa.Core.Components;
 using Siwa.Core.Helper;
 
-namespace Siwa;
+namespace Siwa.Core.Testing;
 
 public class UnlitAssets
 {
     public UnlitAssets(JsonSerializerOptions options)
     {
-        ShaderAsset shaderAsset = new ShaderAsset
-        {
-            Name = "lamb_shader",
-            FragmentShaderPath = "D:\\SiwaProject\\Shaders\\unlit.frag",
-            VertexShaderPath = "D:\\SiwaProject\\Shaders\\unlit.vert",
-            Handle = AssetPool<Shader>.Registry.Register(new Shader()).ToRaw()
-        };
-
+        var unlitShaderHandle = new Handle<Shader>(0, 0);
         UnlitMaterialAsset material = new UnlitMaterialAsset
         {
             Name = "lamb_material_1",
-            Handle = AssetPool<UnlitMaterial>.Registry.Register(new UnlitMaterial()).ToRaw(),
+            Handle = AssetPool<UnlitMaterial>.Registry.Reserve().ToRaw(),
             LightColor = Color.White.ToVector4(),
-            Shader = shaderAsset.Handle.ToHandle<Shader>()
+            Shader = unlitShaderHandle
         };
 
         UnlitMaterialAsset material1 = new UnlitMaterialAsset
         {
             Name = "lamb_material_2",
-            Handle = AssetPool<UnlitMaterial>.Registry.Register(new UnlitMaterial()).ToRaw(),
+            Handle = AssetPool<UnlitMaterial>.Registry.Reserve().ToRaw(),
             LightColor = Color.White.ToVector4(),
-            Shader = shaderAsset.Handle.ToHandle<Shader>()
+            Shader = unlitShaderHandle
         };
 
         ModelAsset modelAsset = new ModelAsset
         {
             Model = "D:\\SiwaProject\\Assets\\Engine\\Light_LightBulb.obj",
             Name = "Light_LightBulb",
-            Handle = AssetPool<Model>.Registry.Register(new Model()).ToRaw(),
+            Handle = AssetPool<Model>.Registry.Reserve().ToRaw(),
             MaterialAssets =
             [
                 new MaterialHandle
@@ -54,9 +47,7 @@ public class UnlitAssets
                 }
             ]
         };
-
-
-        File.WriteAllText("D:\\SiwaProject\\Assets\\testing.shader", JsonSerializer.Serialize(shaderAsset, options));
+        
         File.WriteAllText("D:\\SiwaProject\\Assets\\testing.model", JsonSerializer.Serialize(modelAsset, options));
         File.WriteAllText("D:\\SiwaProject\\Assets\\testing.unlit", JsonSerializer.Serialize(material, options));
         File.WriteAllText("D:\\SiwaProject\\Assets\\testing1.unlit", JsonSerializer.Serialize(material1, options));

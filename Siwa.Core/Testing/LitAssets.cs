@@ -8,7 +8,7 @@ using Siwa.Core.Helper;
 using Shader = Siwa.Core.Components.Shader;
 using Texture = Siwa.Core.Components.Texture;
 
-namespace Siwa;
+namespace Siwa.Core.Testing;
 
 public class LitAssets
 {
@@ -68,21 +68,15 @@ public class LitAssets
             Slot = 0,
             FlipVertically = false
         };
-        
-        var shaderAsset = new ShaderAsset
-        {
-            Name = "table_shader",
-            FragmentShaderPath = "D:\\SiwaProject\\Shaders\\shader.frag",
-            VertexShaderPath = "D:\\SiwaProject\\Shaders\\shader.vert",
-            Handle = AssetPool<Shader>.Registry.Register(new Shader()).ToRaw()
-        };
 
+        var litShaderHandle = new Handle<Shader>(1, 0);
+        
         var material = new LitMaterialAsset
         {
             Name = "cloth_material",
             Handle = AssetPool<LitMaterial>.Registry.Reserve().ToRaw(),
             Color = Color.White.ToVector4(),
-            Shader = shaderAsset.Handle.ToHandle<Shader>(),
+            Shader = litShaderHandle,
             AlbedoTexture = clothD1.Handle.ToHandle<Texture>(),
             SpecularTexture = clothB.Handle.ToHandle<Texture>(),
             LightRange = 0,
@@ -95,7 +89,7 @@ public class LitAssets
             Name = "cloth_material1",
             Handle = AssetPool<LitMaterial>.Registry.Reserve().ToRaw(),
             Color = Color.White.ToVector4(),
-            Shader = shaderAsset.Handle.ToHandle<Shader>(),
+            Shader = litShaderHandle,
             AlbedoTexture = clothD2.Handle.ToHandle<Texture>(),
             SpecularTexture = clothB.Handle.ToHandle<Texture>(),
             LightRange = 0,
@@ -107,7 +101,7 @@ public class LitAssets
             Name = "wood",
             Handle = AssetPool<LitMaterial>.Registry.Reserve().ToRaw(),
             Color = Color.White.ToVector4(),
-            Shader = shaderAsset.Handle.ToHandle<Shader>(),
+            Shader = litShaderHandle,
             AlbedoTexture = woodD.Handle.ToHandle<Texture>(),
             SpecularTexture = woodB.Handle.ToHandle<Texture>(),
             LightRange = 0,
@@ -154,7 +148,6 @@ public class LitAssets
         };
 
 
-        File.WriteAllText("D:\\SiwaProject\\Assets\\testing_lit.shader", JsonSerializer.Serialize(shaderAsset, options));
         File.WriteAllText("D:\\SiwaProject\\Assets\\testing_lit.model", JsonSerializer.Serialize(modelAsset, options));
         File.WriteAllText("D:\\SiwaProject\\Assets\\testing_lit.lit", JsonSerializer.Serialize(material, options));
         File.WriteAllText("D:\\SiwaProject\\Assets\\testing1_lit.lit", JsonSerializer.Serialize(material1, options));
@@ -166,7 +159,5 @@ public class LitAssets
         File.WriteAllText("D:\\SiwaProject\\Assets\\woodD_lit.texture", JsonSerializer.Serialize(woodD, options));
         File.WriteAllText("D:\\SiwaProject\\Assets\\popcat.texture", JsonSerializer.Serialize(popCat, options));
         File.WriteAllText("D:\\SiwaProject\\Assets\\armadillo.model", JsonSerializer.Serialize(armadillo, options));
-        
-        
     }
 }
