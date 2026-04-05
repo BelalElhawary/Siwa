@@ -20,6 +20,8 @@ namespace Siwa.Core
 {
     public sealed class Game : IDisposable
     {
+        public static readonly Vector3 Up = Vector3.UnitY;
+        
         private readonly IWindow _window;
         private GL? _gl;
         private World? _world;
