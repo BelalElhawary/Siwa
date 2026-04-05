@@ -7,6 +7,7 @@ using Siwa.Core.Assets;
 using Siwa.Core.Assets.Kinds;
 using Siwa.Core.Components;
 using Siwa.Core.Data;
+using Siwa.Core.Editor;
 using Siwa.Core.Helper;
 
 namespace Siwa.Core.Systems;
@@ -156,34 +157,47 @@ public class ImGuiSystem(World world, ViewPort viewPort)
     private void Assets()
     {
         ImGui.Begin("Assets");
-        foreach (var asset in _assets)
+
+        // 1. Calculate Grid Math
+        float thumbnailSize = 64.0f;
+        float padding = 16.0f;
+        float cellSize = thumbnailSize + padding;
+        float panelWidth = ImGui.GetContentRegionAvail().X;
+    
+        // Ensure we always have at least 1 column to prevent ImGui crashes
+        int columnCount = Math.Max(1, (int)(panelWidth / cellSize));
+
+        // 2. Draw the Grid
+        if (ImGui.BeginTable("AssetBrowserGrid", columnCount))
         {
-            ImGui.BeginGroup();
-            switch (asset)
+            foreach (var asset in _assets)
             {
-                case ModelAsset model:
-                    ImGuiDraggableAsset<Model>(model, Images.ModelIcon);
-                    break;
-                case ShaderAsset shader:
-                    ImGuiDraggableAsset<Shader>(shader, Images.ShaderIcon);
-                    break;
-                case UnlitMaterialAsset unlit:
-                    ImGuiDraggableMaterialAsset(unlit, Images.MaterialIcon, MaterialType.Unlit);
-                    break;
-                case LitMaterialAsset lit:
-                    ImGuiDraggableMaterialAsset(lit, Images.MaterialIcon, MaterialType.Lit);
-                    break;
-                case TextureAsset texture:
-                    ref var handle = ref AssetPool<Texture>.Registry.Get(texture.Handle.ToHandle<Texture>());
-                    ImGuiDraggableAsset<Texture>(texture, (IntPtr)handle.Handle);
-                    break;
+                ImGui.TableNextColumn();
+                ImGui.PushID(HashCode.Combine(asset.GetType(), asset.Handle)); // Ensure unique IDs per asset
+
+                IntPtr icon = GetAssetIcon(asset);
+                bool isSelected = _selectedAsset == asset;
+
+                // Draw the visual component
+                if (DrawGridItem(asset.Name, icon, thumbnailSize, isSelected))
+                {
+                    _selectedAsset = asset;
+                }
+
+                // Handle the backend drag-and-drop logic
+                HandleAssetDragDrop(asset);
+
+                ImGui.PopID();
             }
-            ImGui.SameLine();
-            ImGui.Text(asset.Name);
-            ImGui.EndGroup();
+            ImGui.EndTable();
         }
+    
         ImGui.End();
     }
+    
+    private Entity _lastSelectedObject; // Track whatever your _selected object is
+    private Vector3 _inspectorEulerAngles;
+    private Quaternion _lastKnownRotation;
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void Inspector()
@@ -201,29 +215,46 @@ public class ImGuiSystem(World world, ViewPort viewPort)
         ImGui.Text("Entity ID: " + _selected.Value.Id);
         ref var tag = ref _selected.Value.TryGetRef<Tag>(out var exists);
         if(exists) ImGui.InputText(nameof(Tag.Name), ref tag.Name, 255);
-        for (int i = 0; i < components.Length; i++)
+        foreach (var component in components)
         {
-            if(components[i] is null) continue;
-            switch (components[i])
+            if(component is null) continue;
+            switch (component)
             {
-                case Transform: 
-                    if(ImGui.CollapsingHeader(nameof(Transform)))
+                case Transform:
+                    if(ImGui.CollapsingHeader("Transform"))
                     {
                         ref Transform reference = ref _selected.Value.Get<Transform>();
-                        ImGui.InputFloat3(nameof(Transform.Position), ref reference.Position);
-                        Vector3 eulerDegrees = reference.Rotation.ToEuler();
-                        // 2. Use InputFloat3 for a better user experience
-                        if (ImGui.InputFloat3("Rotation", ref eulerDegrees))
-                        {
-                            // 3. Convert Degrees back to Radians
-                            float radX = eulerDegrees.X * ((float)Math.PI / 180f);
-                            float radY = eulerDegrees.Y * ((float)Math.PI / 180f);
-                            float radZ = eulerDegrees.Z * ((float)Math.PI / 180f);
+                        ImGui.InputVector3("Position", ref reference.Position);
+        
+                        // 1. Did we select a new object? OR did the game's physics/code change the rotation?
+                        // We use a tiny threshold for quaternion comparison to avoid floating point micro-jitters
+                        bool rotationChangedExternally = MathF.Abs(Quaternion.Dot(reference.Rotation, _lastKnownRotation)) < 0.9999f;
 
-                            // 4. Create the new Quaternion (Order: Yaw, Pitch, Roll)
-                            reference.Rotation = Quaternion.CreateFromYawPitchRoll(radY, radX, radZ);
+                        if (_selected.Value != _lastSelectedObject || rotationChangedExternally)
+                        {
+                            // Only extract from the Quaternion if we HAVE to
+                            _inspectorEulerAngles = reference.Rotation.ToEuler();
+                            _lastSelectedObject = _selected.Value;
+                            _lastKnownRotation = reference.Rotation;
                         }
-                        ImGui.InputFloat3(nameof(Transform.Scale), ref reference.Scale);
+
+                        // 2. Drive the UI with our CACHED Euler angles
+                        // "%.2f°"
+                        if (ImGui.InputVector3("Rotation", ref _inspectorEulerAngles))
+                        {
+                            // 3. User dragged the slider! Calculate the new Quaternion
+                            float radX = _inspectorEulerAngles.X * (MathF.PI / 180f);
+                            float radY = _inspectorEulerAngles.Y * (MathF.PI / 180f);
+                            float radZ = _inspectorEulerAngles.Z * (MathF.PI / 180f);
+
+                            reference.Rotation = Quaternion.Normalize(Quaternion.CreateFromYawPitchRoll(radY, radX, radZ));
+            
+                            // 4. IMMEDIATELY update our known rotation so the external change detector (Step 1) 
+                            // doesn't trigger on the next frame and ruin our nice Euler values
+                            _lastKnownRotation = reference.Rotation;
+                        }
+
+                        ImGui.InputVector3("Scale", ref reference.Scale, 1f);
                     } 
                     break;
                 case Camera:
@@ -242,7 +273,7 @@ public class ImGuiSystem(World world, ViewPort viewPort)
                     if(ImGui.CollapsingHeader(nameof(Renderable)))
                     {
                         ref Renderable reference = ref _selected.Value.Get<Renderable>();
-                        ImGuiHandle(nameof(Renderable.Model), ref reference.Model);
+                        ImGui.InputHandle(nameof(Renderable.Model), ref reference.Model);
                     } 
                     break;
             }
@@ -268,15 +299,15 @@ public class ImGuiSystem(World world, ViewPort viewPort)
                 ImGui.InputText("Name", ref unlit.Name, 256);
                 ref var material = ref AssetPool<UnlitMaterial>.Registry.Get(unlit.Handle.ToHandle<UnlitMaterial>());
                 ImGui.ColorEdit4("Color", ref material.Color);
-                ImGuiHandle("Shader", ref material.Shader);
+                ImGui.InputHandle("Shader", ref material.Shader);
             } break;
             case LitMaterialAsset lit:
             {
                 ImGui.InputText("Name", ref lit.Name, 256);
                 ref var material = ref AssetPool<LitMaterial>.Registry.Get(lit.Handle.ToHandle<LitMaterial>());
-                ImGuiHandle("Shader", ref material.Shader);
-                ImGuiHandle("Albedo", ref material.AlbedoTexture);
-                ImGuiHandle("Specular", ref material.SpecularTexture);
+                ImGui.InputHandle("Shader", ref material.Shader);
+                ImGui.InputHandle("Albedo", ref material.AlbedoTexture);
+                ImGui.InputHandle("Specular", ref material.SpecularTexture);
                 ImGui.ColorEdit4("Color", ref material.Color);
                 ImGui.InputFloat3("Light Position",  ref material.LightPosition);
                 ImGui.InputFloat("Light Range",  ref material.LightRange);
@@ -289,7 +320,7 @@ public class ImGuiSystem(World world, ViewPort viewPort)
                 for (int i = 0; i < reference.Meshes.Length; i++)
                 {
                     ref MaterialHandle materialHandle = ref reference.Meshes[i].Material;
-                    ImGuiMaterialHandle($"Mesh {i} Material", ref materialHandle);
+                    ImGui.InputMaterialHandle($"Mesh {i} Material", ref materialHandle);
                 }
                 
             } break;
@@ -309,91 +340,87 @@ public class ImGuiSystem(World world, ViewPort viewPort)
         ImGui.End();
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private unsafe void ImGuiDraggableMaterialAsset(Asset asset, IntPtr icon, MaterialType materialType)
+    // Helper 1: Resolves the icon cleanly
+    private IntPtr GetAssetIcon(Asset asset)
     {
-        var clicked = ImGui.ImageButton(asset.Name, icon, new Vector2(50, 50));
+        return asset switch
+        {
+            ModelAsset => Images.ModelIcon,
+            ShaderAsset => Images.ShaderIcon,
+            LitMaterialAsset => Images.MaterialIcon,
+            UnlitMaterialAsset => Images.MaterialIcon,
+            TextureAsset tex => (IntPtr)AssetPool<Texture>.Registry.Get(tex.Handle.ToHandle<Texture>()).Handle,
+            _ => IntPtr.Zero
+        };
+    }
+
+    // Helper 2: Draws a beautiful, selectable grid item with centered text
+    private bool DrawGridItem(string name, IntPtr icon, float size, bool isSelected)
+    {
+        bool clicked = false;
+        ImGui.BeginGroup();
+
+        // 1. Selection Highlight (Tint the button background if selected)
+        Vector4 bgColor = isSelected ? new Vector4(0.2f, 0.4f, 0.8f, 1.0f) : new Vector4(0, 0, 0, 0);
+        ImGui.PushStyleColor(ImGuiCol.Button, bgColor);
         
-        if (ImGui.BeginDragDropSource())
+        // Transparent background for normal state, highlighted if selected
+        if (ImGui.ImageButton("##icon", icon, new Vector2(size, size)))
+        {
+            clicked = true;
+        }
+        ImGui.PopStyleColor();
+
+        // 2. Text Formatting (Centered below icon)
+        // Truncate long names to prevent breaking the grid layout
+        string displayName = name.Length > 12 ? name.Substring(0, 10) + "..." : name;
+        
+        float textWidth = ImGui.CalcTextSize(displayName).X;
+        float textOffset = (size - textWidth) * 0.5f; // Center math
+        
+        if (textOffset > 0) 
+        {
+            ImGui.SetCursorPosX(ImGui.GetCursorPosX() + textOffset);
+        }
+        
+        ImGui.Text(displayName);
+
+        // Optional: Add a tooltip so users can read the full name on hover
+        if (ImGui.IsItemHovered() && name.Length > 12)
+        {
+            ImGui.SetTooltip(name);
+        }
+
+        ImGui.EndGroup();
+        return clicked;
+    }
+
+    // Helper 3: Centralized Drag & Drop Data Packaging
+    private unsafe void HandleAssetDragDrop(Asset asset)
+    {
+        if (!ImGui.BeginDragDropSource()) return;
+
+        if (asset is UnlitMaterialAsset or LitMaterialAsset)
         {
             var handleValue = new MaterialHandle
             {
                 Handle = asset.Handle,
-                Type = materialType
+                Type = asset is LitMaterialAsset ? MaterialType.Lit : MaterialType.Unlit
             };
             ImGui.SetDragDropPayload(nameof(MaterialHandle), (IntPtr)(&handleValue), (uint)sizeof(MaterialHandle));
-            ImGui.Text(asset.Name);
-            ImGui.EndDragDropSource();
         }
+        else if (asset is ModelAsset) SetStandardPayload<Model>(asset);
+        else if (asset is ShaderAsset) SetStandardPayload<Shader>(asset);
+        else if (asset is TextureAsset) SetStandardPayload<Texture>(asset);
 
-        if (!clicked) return;
-
-        _selectedAsset = asset;
+        // This renders the text next to the mouse cursor WHILE dragging
+        ImGui.Text($"Move {asset.Name}"); 
+        ImGui.EndDragDropSource();
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void ImGuiHandle<T>(string label, ref Handle<T> handle) where T : struct
+    private unsafe void SetStandardPayload<T>(Asset asset) where T : struct
     {
-        ImGui.Text(label);
-        ImGui.SameLine();
-    
-        // Create a read-only selectable or a button to act as the "Slot"
-        ImGui.Button(typeof(T).Name + Handle<T>.ToLong(handle), new Vector2(ImGui.GetContentRegionAvail().X, 0));
-
-        if (ImGui.BeginDragDropTarget())
-        {
-            var payload = ImGui.AcceptDragDropPayload(typeof(T).Name);
-            unsafe
-            {
-                if (payload.NativePtr != null)
-                {
-                    var uid = *(long*)payload.Data;
-                    handle = Handle<T>.FromLong(uid);
-                }
-            }
-            ImGui.EndDragDropTarget();
-        }
-    }
-    
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private unsafe void ImGuiDraggableAsset<T>(Asset asset, IntPtr icon) where T : struct
-    {
-        var clicked = ImGui.ImageButton(asset.Name, icon, new Vector2(50, 50));
-        
-        if (ImGui.BeginDragDropSource())
-        {
-            long handleValue = RawHandle.ToLong(asset.Handle);
-            ImGui.SetDragDropPayload(typeof(T).Name, (IntPtr)(&handleValue), sizeof(long));
-            ImGui.Text(asset.Name);
-            ImGui.EndDragDropSource();
-        }
-
-        if (!clicked) return;
-
-        _selectedAsset = asset;
-    }
-    
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void ImGuiMaterialHandle(string label, ref MaterialHandle handle)
-    {
-        ImGui.Text(label);
-        ImGui.SameLine();
-    
-        ImGui.Button(RawHandle.ToLong(handle.Handle).ToString(), new Vector2(ImGui.GetContentRegionAvail().X, 0));
-
-        if (ImGui.BeginDragDropTarget())
-        {
-            var payload = ImGui.AcceptDragDropPayload(nameof(MaterialHandle));
-            unsafe
-            {
-                if (payload.NativePtr != null)
-                {
-                    var material = *(MaterialHandle*)payload.Data;
-                    handle.Handle = new RawHandle(material.Handle.Index, material.Handle.Generation);
-                    handle.Type =  material.Type;
-                }
-            }
-            ImGui.EndDragDropTarget();
-        }
+        long handleValue = RawHandle.ToLong(asset.Handle);
+        ImGui.SetDragDropPayload(typeof(T).Name, (IntPtr)(&handleValue), sizeof(long));
     }
 }

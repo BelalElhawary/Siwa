@@ -61,8 +61,7 @@ public sealed class AssetPool<T> where T : struct
     }
 }
 
-public readonly struct Handle<T>(uint index, uint generation)
-    where T : struct
+public readonly struct Handle<T>(uint index, uint generation) : IEquatable<Handle<T>> where T : struct
 {
     [JsonInclude] public uint Index { get; init; } = index;
     [JsonInclude] public uint Generation { get; init; } = generation;
@@ -79,9 +78,24 @@ public readonly struct Handle<T>(uint index, uint generation)
     {
         return ((long)handle.Index << 32) | handle.Generation;
     }
+
+    public bool Equals(Handle<T> other)
+    {
+        return Index == other.Index && Generation == other.Generation;
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return obj is Handle<T> other && Equals(other);
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Index, Generation);
+    }
 }
 
-public readonly struct RawHandle(uint index, uint generation)
+public readonly struct RawHandle(uint index, uint generation) : IEquatable<RawHandle>
 {
     [JsonInclude] public uint Index { get; init; } = index;
     [JsonInclude] public uint Generation { get; init; } = generation;
@@ -97,6 +111,21 @@ public readonly struct RawHandle(uint index, uint generation)
     public static long ToLong(RawHandle handle)
     {
         return ((long)handle.Index << 32) | handle.Generation;
+    }
+
+    public bool Equals(RawHandle other)
+    {
+        return Index == other.Index && Generation == other.Generation;
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return obj is RawHandle other && Equals(other);
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Index, Generation);
     }
 }
 
