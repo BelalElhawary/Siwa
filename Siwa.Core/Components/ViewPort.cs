@@ -13,12 +13,14 @@ public unsafe class ViewPort(GL gl)
     public uint Height;
     public bool IsFocused = false;
     
+    public uint FboId => _fbo;
+    
     public void OnLoad()
     {
         gl.BindFramebuffer(FramebufferTarget.Framebuffer, _fbo);
         gl.BindTexture(TextureTarget.Texture2D, TextureColorBuffer);
         
-        gl.TexImage2D(TextureTarget.Texture2D, 0, InternalFormat.Rgb, Width, Height, 0, PixelFormat.Rgb, PixelType.UnsignedByte, null);
+        gl.TexImage2D(TextureTarget.Texture2D, 0, InternalFormat.Rgba, Width, Height, 0, PixelFormat.Rgba, PixelType.UnsignedByte, null);
         gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.Linear);
         gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Linear);
 
@@ -37,7 +39,7 @@ public unsafe class ViewPort(GL gl)
         Width = width;
         Height = height;
         gl.BindTexture(TextureTarget.Texture2D, TextureColorBuffer);
-        gl.TexImage2D(TextureTarget.Texture2D, 0, InternalFormat.Rgb, width, height, 0, PixelFormat.Rgb, PixelType.UnsignedByte, null);
+        gl.TexImage2D(TextureTarget.Texture2D, 0, InternalFormat.Rgba, width, height, 0, PixelFormat.Rgba, PixelType.UnsignedByte, null);
     
         gl.BindRenderbuffer(RenderbufferTarget.Renderbuffer, _rbo);
         gl.RenderbufferStorage(RenderbufferTarget.Renderbuffer, InternalFormat.Depth24Stencil8, width, height);

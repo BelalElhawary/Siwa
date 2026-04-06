@@ -8,13 +8,12 @@ using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL.Extensions.ImGui;
 using Siwa.Core.Assets;
-using Siwa.Core.Assets.Kinds;
 using Siwa.Core.Components;
 using Siwa.Core.Data;
 using Siwa.Core.Rendering;
 using Siwa.Core.Serialization;
 using Siwa.Core.Systems;
-using Camera = Siwa.Core.Components.Camera;
+using SkiaSharp;
 
 namespace Siwa.Core
 {
@@ -144,6 +143,7 @@ namespace Siwa.Core
 
             _renderCollection.Add(0, new CameraSystem(gl, _world, _inputContext, _viewPort));
             _renderCollection.Add(1, new RenderSystem(_world, gl, _renderer));
+            _renderCollection.Add(2, new UiSystem(_window, _viewPort));
         }
         
         public void Dispose()
