@@ -33,7 +33,7 @@ public class CameraSystem(GL gl, World world, IInputContext inputContext, ViewPo
     
     public void Render()
     {
-        RenderCameraPerspective();
+        RenderCamera3D();
     }
 
     public void Start() { }
@@ -45,7 +45,7 @@ public class CameraSystem(GL gl, World world, IInputContext inputContext, ViewPo
 
     private readonly QueryDescription _queryRenderCameraPerspective = new QueryDescription().WithAll<Transform, Camera>();
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void RenderCameraPerspective()
+    private void RenderCamera3D()
     {
         world.Query(in _queryRenderCameraPerspective, (ref Transform transform, ref Camera camera) =>
         {
