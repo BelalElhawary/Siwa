@@ -107,7 +107,61 @@ public static class EditorImGui
             ImGui.Columns(1);
             ImGui.PopID();
         }
-                
+              
+        public static bool InputVector2(string label, ref Vector2 values, float resetValue = 0.0f, float columnWidth = 100.0f)
+        {
+            bool isModified = false;
+
+            ImGui.PushID(label);
+
+            ImGui.Columns(2);
+            ImGui.SetColumnWidth(0, columnWidth);
+            ImGui.Text(label);
+            ImGui.NextColumn();
+
+            // 1. Calculate sizes
+            float lineHeight = ImGui.GetFont().FontSize + ImGui.GetStyle().FramePadding.Y * 2.0f;
+            Vector2 buttonSize = new Vector2(lineHeight + 3.0f, lineHeight);
+
+            // 2. Calculate how much width each DragFloat gets 
+            // (Total width - 3 buttons) divided by 3
+            float widthEach = (ImGui.CalcItemWidth() - buttonSize.X * 3.0f) / 3.0f;
+
+            // Remove automatic spacing so the buttons tightly hug the input boxes
+            ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(0, 0));
+            float groupSpacing = ImGui.GetStyle().ItemSpacing.X; // Save original spacing
+
+            // --- X Axis (Red) ---
+            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.8f, 0.1f, 0.15f, 1.0f));
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.9f, 0.2f, 0.2f, 1.0f));
+            ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.8f, 0.1f, 0.15f, 1.0f));
+            if (ImGui.Button("X", buttonSize)) { values.X = resetValue; isModified = true; }
+            ImGui.PopStyleColor(3);
+
+            ImGui.SameLine();
+            ImGui.SetNextItemWidth(widthEach); // Set width for this specific input
+            isModified |= ImGui.DragFloat("##X", ref values.X, 0.1f, 0.0f, 0.0f, "%.2f");
+
+            // --- Y Axis (Green) ---
+            ImGui.SameLine(0, groupSpacing); // Add normal spacing between X and Y groups
+            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.2f, 0.7f, 0.2f, 1.0f));
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.3f, 0.8f, 0.3f, 1.0f));
+            ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.2f, 0.7f, 0.2f, 1.0f));
+            if (ImGui.Button("Y", buttonSize)) { values.Y = resetValue; isModified = true; }
+            ImGui.PopStyleColor(3);
+
+            ImGui.SameLine();
+            ImGui.SetNextItemWidth(widthEach);
+            isModified |= ImGui.DragFloat("##Y", ref values.Y, 0.1f, 0.0f, 0.0f, "%.2f");
+
+            // Cleanup
+            ImGui.PopStyleVar(); // Restore standard ItemSpacing
+            ImGui.Columns(1);
+            ImGui.PopID();
+
+            return isModified;
+        }
+        
         public static bool InputVector3(string label, ref Vector3 values, float resetValue = 0.0f, float columnWidth = 100.0f)
         {
             bool isModified = false;

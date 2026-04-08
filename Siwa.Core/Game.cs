@@ -141,7 +141,7 @@ namespace Siwa.Core
             
             _guiSystem = new ImGuiSystem(_world, _viewPort);
 
-            _renderCollection.Add(0, new CameraSystem(gl, _world, _inputContext, _viewPort));
+            _renderCollection.Add(0, new CameraSystem2D(gl, _world, _inputContext, _viewPort));
             _renderCollection.Add(1, new RenderSystem(_world, gl, _renderer));
             _renderCollection.Add(2, new UiSystem(_window, _viewPort));
         }

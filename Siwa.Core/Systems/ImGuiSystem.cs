@@ -223,7 +223,7 @@ public class ImGuiSystem(World world, ViewPort viewPort)
             switch (component)
             {
                 case Transform:
-                    if(ImGui.CollapsingHeader("Transform"))
+                    if(ImGui.CollapsingHeader(nameof(Transform)))
                     {
                         ref Transform reference = ref _selected.Value.Get<Transform>();
                         ImGui.InputVector3("Position", ref reference.Position);
@@ -259,8 +259,21 @@ public class ImGuiSystem(World world, ViewPort viewPort)
                         ImGui.InputVector3("Scale", ref reference.Scale, 1f);
                     } 
                     break;
+                case Transform2D:
+                    if(ImGui.CollapsingHeader(nameof(Transform2D)))
+                    {
+                        ref Transform2D reference = ref _selected.Value.Get<Transform2D>();
+                        ImGui.InputVector2("Position", ref reference.Position);
+                        ImGui.DragFloat("Rotation", ref reference.Rotation, 1, 0, 0, "%.2f°");
+                        ImGui.InputVector2("Scale", ref reference.Scale, 1f);
+                    } 
+                    break;
                 case Camera:
                     if(ImGui.CollapsingHeader(nameof(Camera)))
+                    { }
+                    break;
+                case Camera2D:
+                    if(ImGui.CollapsingHeader(nameof(Camera2D)))
                     { }
                     break;
                 case CameraMovement:
